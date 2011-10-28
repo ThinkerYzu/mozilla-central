@@ -53,7 +53,9 @@ b2g/installer/Makefile
 b2g/locales/Makefile
 b2g/Makefile
 b2g/themes/Makefile
-b2g/themes/core/Makefile"
+b2g/themes/core/Makefile
+hal/android/Makefile
+"
 
 if test -n "$MOZ_UPDATE_PACKAGING"; then
    add_makefiles "

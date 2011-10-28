@@ -44,6 +44,8 @@ VPATH       = \
   $(srcdir)/sandbox \
   $(NULL)
 
+DIRS = android
+
 include $(DEPTH)/config/autoconf.mk
 
 MODULE         = hal
