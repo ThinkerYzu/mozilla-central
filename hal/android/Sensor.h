@@ -47,7 +47,9 @@ namespace mozilla {
 namespace hal_android {
 
 enum SensorType {
-    ProximitySensor,
+    SENSOR_ORIENTATION,
+    SENSOR_ACCELERATION,
+    SENSOR_PROXIMITY,
     NumSensorType
 };
 

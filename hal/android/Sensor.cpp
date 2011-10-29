@@ -40,6 +40,7 @@
 #include "Sensor.h"
 #include "nsTArray.h"
 #include "nspr/prtime.h"
+#include "AndroidBridge.h"
 
 namespace mozilla {
 namespace hal_android {
@@ -53,30 +54,62 @@ _get_observers(SensorType sensor_type) {
     return hal_observers[sensor_type];
 }
 
+static int sensor_type_2_android_map[][2] = {
+    { SENSOR_ORIENTATION, 3 /* ORIENTATION_EVENT */ },
+    { SENSOR_ACCELERATION, 4 /* ACCELERATION_EVENT */ },
+    { SENSOR_PROXIMITY, 18 /* PROXIMITY_EVENT */ },
+    { -1, -1 }
+};
+
+/* Translate ID of sensor type from Sensor service to Android */
+static int
+_map_sensor_type(int sensor_type) {
+    int i;
+    
+    while(sensor_type_2_android_map[i][0] != -1) {
+        if(sensor_type_2_android_map[i][0] == sensor_type)
+            return sensor_type_2_android_map[i][1];
+    }
+    return -1;
+}
+
 void
 RegisterSensorObserver(SensorType sensor, ISensorObserver *observer) {
     nsTArray<ISensorObserver *> &observers = _get_observers(sensor);
+    int android_sensor = _map_sensor_type(sensor);
 
     observers.AppendElement(observer);
+    if(observers.Length() == 1) {
+        AndroidBridge::Bridge()->EnableSensor(android_sensor);
+    }
 }
 
 void
 UnregisterSensorObserver(SensorType sensor, ISensorObserver *observer) {
     nsTArray<ISensorObserver *> &observers = _get_observers(sensor);
+    int android_sensor = _map_sensor_type(sensor);
 
     observers.RemoveElement(observer);
+    if(observers.Length() == 0) {
+        AndroidBridge::Bridge()->DisableSensor(android_sensor);
+    }
 }
 
 void PostProximityEvent(double distance) {
+    nsTArray<ISensorObserver *> &observers = _get_observers(SENSOR_PROXIMITY);
     SensorData *sdata;
     ISensorObserver *observer;
+    int i;
     
     sdata = new SensorData();
-    sdata->sensor = ProximitySensor;
+    sdata->sensor = SENSOR_PROXIMITY;
     sdata->timestamp = PR_Now();
     sdata->numValues = 1;
     sdata->values[0] = distance;
-    observer->observe(sdata);
+    for(i = 0; i < observers.Length(); i++) {
+        observer = observers[i];
+        observer->observe(sdata);
+    }
 }
 
 }
