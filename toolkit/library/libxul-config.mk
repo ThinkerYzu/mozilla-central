@@ -97,6 +97,7 @@ STATIC_LIBS += \
   gfx2d \
   gfxipc_s \
   hal_s \
+  hal_android \
   $(NULL)
 
 ifdef MOZ_IPDL_TESTS

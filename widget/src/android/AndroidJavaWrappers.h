@@ -411,6 +411,7 @@ public:
     double X() { return mX; }
     double Y() { return mY; }
     double Z() { return mZ; }
+    double Distance() { return mDistance; }
     const nsIntRect& Rect() { return mRect; }
     nsAString& Characters() { return mCharacters; }
     int KeyCode() { return mKeyCode; }
@@ -440,6 +441,7 @@ protected:
     int mRangeForeColor, mRangeBackColor;
     double mAlpha, mBeta, mGamma;
     double mX, mY, mZ;
+    double mDistance;
     nsString mCharacters;
     nsRefPtr<nsGeoPosition> mGeoPosition;
     nsRefPtr<nsGeoPositionAddress> mGeoAddress;
@@ -461,6 +463,7 @@ protected:
     static jfieldID jXField;
     static jfieldID jYField;
     static jfieldID jZField;
+    static jfieldID jDistanceField;
     static jfieldID jRectField;
     static jfieldID jNativeWindowField;
 
@@ -498,6 +501,7 @@ public:
         GECKO_EVENT_SYNC = 15,
         FORCED_RESIZE = 16,
         ACTIVITY_START = 17,
+        PROXIMITY_EVENT = 18,
         dummy_java_enum_list_end
     };
 

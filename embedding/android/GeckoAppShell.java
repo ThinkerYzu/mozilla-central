@@ -658,6 +658,37 @@ public class GeckoAppShell
             });
     }
 
+    private static final int PROXIMITY_SENSOR = 1;
+
+    private static Sensor gProximitySensor = null;
+
+    public static void enableSensor(int sensorType) {
+        SensorManager sm = (SensorManager)
+            GeckoApp.surfaceView.getContext().
+            getSystemService(Context.SENSOR_SERVICE);
+
+        switch(sensorType) {
+        case PROXIMITY_SENSOR:
+            if(gProximitySensor == null)
+                gProximitySensor = sm.getDefaultSensor(Sensor.TYPE_PROXIMITY);
+            sm.registerListener(GeckoApp.surfaceView, gProximitySensor,
+                                SensorManager.SENSOR_DELAY_GAME);
+            break;
+        }
+    }
+
+    public static void disableSensor(int sensorType) {
+        SensorManager sm = (SensorManager)
+            GeckoApp.surfaceView.getContext().
+            getSystemService(Context.SENSOR_SERVICE);
+
+        switch(sensorType) {
+        case PROXIMITY_SENSOR:
+            sm.unregisterListener(GeckoApp.surfaceView, gProximitySensor);
+            break;
+        }
+    }
+
     public static void moveTaskToBack() {
         GeckoApp.mAppContext.moveTaskToBack(true);
     }

@@ -47,6 +47,7 @@
 #include "mozilla/Services.h"
 #include "mozilla/unused.h"
 #include "mozilla/Preferences.h"
+#include "mozilla/Sensor.h"
 #include "prenv.h"
 
 #include "AndroidBridge.h"
@@ -320,6 +321,11 @@ nsAppShell::ProcessNextNativeEvent(bool mayWait)
         }
         else
             NS_WARNING("Received location event without geoposition!");
+        break;
+    }
+
+    case AndroidGeckoEvent::PROXIMITY_EVENT: {
+        hal_android::PostProximityEvent(curEvent->Distance());
         break;
     }
 
