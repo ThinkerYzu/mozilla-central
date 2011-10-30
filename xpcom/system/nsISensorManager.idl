@@ -1,11 +1,9 @@
-/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
-/* vim: sw=4 ts=8 et ft=cpp : */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
  * The contents of this file are subject to the Mozilla Public License Version
  * 1.1 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at:
+ * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
  * Software distributed under the License is distributed on an "AS IS" basis,
@@ -13,15 +11,14 @@
  * for the specific language governing rights and limitations under the
  * License.
  *
- * The Original Code is Mozilla Code.
+ * The Original Code is mozilla.org code.
  *
- * The Initial Developer of the Original Code is
- *   The Mozilla Foundation
- * Portions created by the Initial Developer are Copyright (C) 2011
+ * The Initial Developer of the Original Code is Mozilla Foundation.
+ * Portions created by the Initial Developer are Copyright (C) 2009
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
- *   Sinker Li <thinker@codemud.net>
+ *   Sinker Li <tlee@mozilla.com>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -37,46 +34,41 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-#ifndef __SENSOR_H_
-#define __SENSOR_H_
+#include "nsISupports.idl"
+#include "nsIArray.idl"
 
-#include "mozilla/Types.h"
-#include "nspr/prtime.h"
+interface nsIDOMWindow;
 
-namespace mozilla {
-namespace hal_android {
-
-enum SensorType {
-    SENSOR_UNKNOWN = -1,
-    SENSOR_ORIENTATION,
-    SENSOR_ACCELERATION,
-    SENSOR_PROXIMITY,
-    NumSensorType
+[scriptable, uuid(433DFC21-02A3-11E1-83A1-002215D227B8)]
+interface nsISensorValue : nsISupports
+{
+  readonly attribute float value;
 };
 
-#define MAX_SENSOR_VALUES 3
-
-struct SensorData {
-    SensorType sensor;
-    PRTime timestamp;
-    float values[MAX_SENSOR_VALUES];
-    size_t numValues;
+[scriptable, uuid(2EAB18FF-0230-11E1-83A1-002215D227B8)]
+interface nsISensorData : nsISupports
+{
+  const short SENSOR_ORIENTATION = 0;
+  const short SENSOR_ACCELERATION = 1;
+  const short SENSOR_PROXIMITY = 2;
+  
+  readonly attribute unsigned long sensor;
+  readonly attribute unsigned long long timestamp;
+  readonly attribute nsIArray values;
 };
 
-template<typename T>
-class IObserver {
-public:
-    virtual void observe(T *data) = 0;
+[scriptable, uuid(605CF47D-0032-11E1-83A1-002215D227B8)]
+interface nsISensorListener : nsISupports
+{
+  void onSensorChange(in nsISensorData aData);
 };
 
-typedef IObserver<SensorData> ISensorObserver;
+[scriptable, uuid(6283CD1A-0039-11E1-83A1-002215D227B8)]
+interface nsISensorManager : nsISupports
+{
+  void addListener(in unsigned long aSensorType,
+		   in nsISensorListener aListener);
+  void removeListener(in unsigned long aSensorType,
+		      in nsISensorListener aListener);
+};
 
-void RegisterSensorObserver(SensorType sensor, ISensorObserver *observer);
-void UnregisterSensorObserver(SensorType sensor, ISensorObserver *observer);
-
-void PostProximityEvent(double distance);
-
-}
-}
-
-#endif /* __SENSOR_H_ */

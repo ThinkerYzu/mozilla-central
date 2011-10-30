@@ -1,11 +1,10 @@
-/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
-/* vim: sw=4 ts=8 et ft=cpp : */
+/* -*- mode: c++; c-basic-offset: 4; tab-width: 8 -*- */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
  * The contents of this file are subject to the Mozilla Public License Version
  * 1.1 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at:
+ * the License. You may obtain a copy of the License at
  * http://www.mozilla.org/MPL/
  *
  * Software distributed under the License is distributed on an "AS IS" basis,
@@ -13,15 +12,14 @@
  * for the specific language governing rights and limitations under the
  * License.
  *
- * The Original Code is Mozilla Code.
+ * The Original Code is mozilla.org code.
  *
- * The Initial Developer of the Original Code is
- *   The Mozilla Foundation
- * Portions created by the Initial Developer are Copyright (C) 2011
+ * The Initial Developer of the Original Code is Mozilla Foundation.
+ * Portions created by the Initial Developer are Copyright (C) 2009
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
- *   Sinker Li <thinker@codemud.net>
+ *   Sinker Li <tlee@mozilla.com>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -37,46 +35,13 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-#ifndef __SENSOR_H_
-#define __SENSOR_H_
+#ifndef __NSSENSORMANAGER_H_
+#define __NSSENSORMANAGER_H_
 
-#include "mozilla/Types.h"
-#include "nspr/prtime.h"
+#include "nsISensorManager.h"
 
-namespace mozilla {
-namespace hal_android {
 
-enum SensorType {
-    SENSOR_UNKNOWN = -1,
-    SENSOR_ORIENTATION,
-    SENSOR_ACCELERATION,
-    SENSOR_PROXIMITY,
-    NumSensorType
-};
+extern nsISensorManager *gSensorManager;
 
-#define MAX_SENSOR_VALUES 3
 
-struct SensorData {
-    SensorType sensor;
-    PRTime timestamp;
-    float values[MAX_SENSOR_VALUES];
-    size_t numValues;
-};
-
-template<typename T>
-class IObserver {
-public:
-    virtual void observe(T *data) = 0;
-};
-
-typedef IObserver<SensorData> ISensorObserver;
-
-void RegisterSensorObserver(SensorType sensor, ISensorObserver *observer);
-void UnregisterSensorObserver(SensorType sensor, ISensorObserver *observer);
-
-void PostProximityEvent(double distance);
-
-}
-}
-
-#endif /* __SENSOR_H_ */
+#endif /* __NSSENSORMANAGER_H_ */
