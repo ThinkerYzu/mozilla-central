@@ -284,6 +284,9 @@ static void Shutdown();
     defined(android)
 #include "nsDeviceMotionSystem.h"
 #endif
+#if defined(ANDROID)
+#include "nsSensorManager.h"
+#endif
 #endif
 #include "nsCSPService.h"
 
@@ -321,6 +324,9 @@ NS_GENERIC_FACTORY_CONSTRUCTOR(nsDeviceMotionSystem)
 #endif
 #if defined(ANDROID) || defined(MOZ_PLATFORM_MAEMO)
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsHapticFeedback)
+#endif
+#if defined(ANDROID)
+NS_GENERIC_FACTORY_CONSTRUCTOR(nsSensorManager)
 #endif
 #endif
 NS_GENERIC_FACTORY_CONSTRUCTOR_INIT(ThirdPartyUtil, Init)
@@ -853,6 +859,9 @@ NS_DEFINE_NAMED_CID(NS_DEVICE_MOTION_CID);
 #if defined(ANDROID) || defined(MOZ_PLATFORM_MAEMO)
 NS_DEFINE_NAMED_CID(NS_HAPTICFEEDBACK_CID);
 #endif
+#if defined(ANDROID)
+NS_DEFINE_NAMED_CID(NS_SENSOR_MANAGER_CID);
+#endif
 #endif
 
 static const mozilla::Module::CIDEntry kLayoutCIDs[] = {
@@ -985,6 +994,9 @@ static const mozilla::Module::CIDEntry kLayoutCIDs[] = {
 #if defined(ANDROID) || defined(MOZ_PLATFORM_MAEMO)
   { &kNS_HAPTICFEEDBACK_CID, false, NULL, nsHapticFeedbackConstructor },
 #endif
+#if defined(ANDROID)
+  { &kNS_SENSOR_MANAGER_CID, false, NULL, nsSensorManagerConstructor },
+#endif
 #endif
   { &kTHIRDPARTYUTIL_CID, false, NULL, ThirdPartyUtilConstructor },
   { &kNS_STRUCTUREDCLONECONTAINER_CID, false, NULL, nsStructuredCloneContainerConstructor },
@@ -1114,6 +1126,9 @@ static const mozilla::Module::ContractIDEntry kLayoutContracts[] = {
 #endif
 #if defined(ANDROID) || defined(MOZ_PLATFORM_MAEMO)
   { "@mozilla.org/widget/hapticfeedback;1", &kNS_HAPTICFEEDBACK_CID },
+#endif
+#if defined(ANDROID)
+  { NS_SENSOR_MANAGER_CONTRACTID, &kNS_SENSOR_MANAGER_CID },
 #endif
 #endif
   { THIRDPARTYUTIL_CONTRACTID, &kTHIRDPARTYUTIL_CID },

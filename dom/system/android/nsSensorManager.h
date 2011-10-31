@@ -39,9 +39,31 @@
 #define __NSSENSORMANAGER_H_
 
 #include "nsISensorManager.h"
+#include "nsTArray.h"
 
 
-extern nsISensorManager *gSensorManager;
+#define NS_SENSOR_MANAGER_CID					\
+    { 0xdba25685, 0x036e, 0x11e1,				\
+	    { 0x83, 0xa1, 0x00, 0x22, 0x15, 0xd2, 0x27, 0xb8 }}
+
+#define NS_SENSOR_MANAGER_CONTRACTID "@mozilla.org/hal/sensormanager;1"
+
+class nsSensorObserver;
+
+class nsSensorManager : public nsISensorManager {
+public:
+    NS_DECL_ISUPPORTS
+    NS_DECL_NSISENSORMANAGER
+    
+    nsSensorManager();
+    virtual ~nsSensorManager();
+
+private:
+    nsTArray<nsSensorObserver *> mObservers;
+};
+
+
+extern nsISensorManager *gSensorManager; // Singleton of nsSensorManager
 
 
 #endif /* __NSSENSORMANAGER_H_ */

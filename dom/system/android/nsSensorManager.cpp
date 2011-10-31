@@ -173,18 +173,6 @@ nsSensorObserver::observe(SensorData *data) {
 }
 
 
-class nsSensorManager : public nsISensorManager {
-public:
-    NS_DECL_ISUPPORTS
-    NS_DECL_NSISENSORMANAGER
-    
-    nsSensorManager();
-    virtual ~nsSensorManager();
-
-private:
-    nsTArray<nsSensorObserver *> mObservers;
-};
-
 NS_INTERFACE_MAP_BEGIN(nsSensorManager)
 NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsISensorManager)
 NS_INTERFACE_MAP_END
