@@ -62,7 +62,8 @@ private:
 };
 
 NS_INTERFACE_MAP_BEGIN(nsSensorValue)
-NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsISensorValue)
+NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsSensorValue)
+NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISensorValue, nsSensorValue)
 NS_INTERFACE_MAP_END
 
 NS_IMPL_ADDREF(nsSensorValue)
@@ -95,7 +96,8 @@ private:
 };
 
 NS_INTERFACE_MAP_BEGIN(nsSensorData)
-NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsISensorData)
+NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsSensorData)
+NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISensorData, nsSensorData)
 NS_INTERFACE_MAP_END
 
 NS_IMPL_ADDREF(nsSensorData)
