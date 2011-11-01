@@ -48,10 +48,6 @@ interface nsISensorValue : nsISupports
 [scriptable, uuid(2EAB18FF-0230-11E1-83A1-002215D227B8)]
 interface nsISensorData : nsISupports
 {
-  const short SENSOR_ORIENTATION = 0;
-  const short SENSOR_ACCELERATION = 1;
-  const short SENSOR_PROXIMITY = 2;
-  
   readonly attribute unsigned long sensor;
   readonly attribute unsigned long long timestamp;
   readonly attribute nsIArray values;
@@ -66,6 +62,10 @@ interface nsISensorListener : nsISupports
 [scriptable, uuid(6283CD1A-0039-11E1-83A1-002215D227B8)]
 interface nsISensorManager : nsISupports
 {
+  const short SENSOR_ORIENTATION = 0;
+  const short SENSOR_ACCELERATION = 1;
+  const short SENSOR_PROXIMITY = 2;
+  
   void addListener(in unsigned long aSensorType,
 		   in nsISensorListener aListener);
   void removeListener(in unsigned long aSensorType,
