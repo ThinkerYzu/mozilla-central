@@ -55,9 +55,11 @@ _get_observers(SensorType sensor_type) {
 }
 
 static int sensor_type_2_android_map[][2] = {
-    { SENSOR_ORIENTATION, 3 /* ORIENTATION_EVENT */ },
-    { SENSOR_ACCELERATION, 4 /* ACCELERATION_EVENT */ },
-    { SENSOR_PROXIMITY, 18 /* PROXIMITY_EVENT */ },
+    // Must be consistent with definitions in
+    // embedding/android/GeckoAppShell.java
+    { SENSOR_ORIENTATION, 1 },
+    { SENSOR_ACCELERATION, 2 },
+    { SENSOR_PROXIMITY, 3 },
     { -1, -1 }
 };
 
@@ -66,7 +68,7 @@ static int
 _map_sensor_type(int sensor_type) {
     int i;
     
-    while(sensor_type_2_android_map[i][0] != -1) {
+    for(i = 0; sensor_type_2_android_map[i][0] != -1; i++) {
         if(sensor_type_2_android_map[i][0] == sensor_type)
             return sensor_type_2_android_map[i][1];
     }

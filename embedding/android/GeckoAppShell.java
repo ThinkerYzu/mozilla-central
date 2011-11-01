@@ -658,7 +658,9 @@ public class GeckoAppShell
             });
     }
 
-    private static final int PROXIMITY_SENSOR = 1;
+    private static final int SENSOR_ORIENTATION = 1;
+    private static final int SENSOR_ACCELERATION = 2;
+    private static final int SENSOR_PROXIMITY = 3;
 
     private static Sensor gProximitySensor = null;
 
@@ -668,7 +670,7 @@ public class GeckoAppShell
             getSystemService(Context.SENSOR_SERVICE);
 
         switch(sensorType) {
-        case PROXIMITY_SENSOR:
+        case SENSOR_PROXIMITY:
             if(gProximitySensor == null)
                 gProximitySensor = sm.getDefaultSensor(Sensor.TYPE_PROXIMITY);
             sm.registerListener(GeckoApp.surfaceView, gProximitySensor,
@@ -683,7 +685,7 @@ public class GeckoAppShell
             getSystemService(Context.SENSOR_SERVICE);
 
         switch(sensorType) {
-        case PROXIMITY_SENSOR:
+        case SENSOR_PROXIMITY:
             sm.unregisterListener(GeckoApp.surfaceView, gProximitySensor);
             break;
         }
