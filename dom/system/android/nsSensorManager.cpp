@@ -174,7 +174,8 @@ nsSensorObserver::observe(SensorData *data) {
 
 
 NS_INTERFACE_MAP_BEGIN(nsSensorManager)
-NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsISensorManager)
+NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsSensorManager)
+NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISensorManager, nsSensorManager)
 NS_INTERFACE_MAP_END
 
 NS_IMPL_ADDREF(nsSensorManager)
