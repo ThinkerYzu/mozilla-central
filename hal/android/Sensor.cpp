@@ -112,6 +112,7 @@ void PostProximityEvent(double distance) {
         observer = observers[i];
         observer->observe(sdata);
     }
+    delete sdata;
 }
 
 }
