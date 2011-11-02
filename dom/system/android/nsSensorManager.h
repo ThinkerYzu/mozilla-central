@@ -40,6 +40,7 @@
 
 #include "nsISensorManager.h"
 #include "nsTArray.h"
+#include "mozilla/Sensor.h"
 
 
 #define NS_SENSOR_MANAGER_CID					\
@@ -60,6 +61,10 @@ public:
 
 private:
     nsTArray<nsSensorObserver *> mObservers;
+
+    void _newObserver(mozilla::hal_android::SensorType type,
+		      nsISensorListener *listener);
+    void _delObserver(int idx);
 };
 
 

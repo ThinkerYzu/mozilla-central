@@ -156,6 +156,13 @@ public:
 
     virtual void observe(SensorData *data);
 
+    inline bool isMatched(SensorType type, nsISensorListener *listener) {
+	return mSensorType == type && mListener.get() == listener;
+    }
+
+    SensorType getType(void) { return mSensorType; };
+
+private:
     SensorType mSensorType;
     nsCOMPtr<nsISensorListener> mListener;
 };
@@ -185,6 +192,10 @@ nsSensorManager::nsSensorManager() {
 }
 
 nsSensorManager::~nsSensorManager() {
+    // Remove all observers which is still in registered.
+    while(mObservers.Length()) {
+	_delObserver(0);
+    }
 }
 
 static struct {
@@ -208,10 +219,31 @@ _sensor_data_to_sensor_type(PRUint32 sdtype) {
     return mozilla::hal_android::SENSOR_UNKNOWN;
 }
 
+inline void
+nsSensorManager::_newObserver(SensorType type, nsISensorListener *listener) {
+    nsSensorObserver *observer;
+    
+    observer = new nsSensorObserver(type, listener);
+    mObservers.AppendElement(observer);
+    RegisterSensorObserver(type, observer);
+}
+
+inline void
+nsSensorManager::_delObserver(int idx) {
+    nsSensorObserver *observer;
+    SensorType sensor_type;
+    
+    observer = mObservers[idx];
+    sensor_type = observer->getType();
+    UnregisterSensorObserver(sensor_type, observer);
+    mObservers.RemoveElementAt(idx);
+    
+    delete observer;
+}
+
 NS_IMETHODIMP
 nsSensorManager::AddListener(PRUint32 aSensorType,
 			     nsISensorListener *aListener) {
-    nsSensorObserver *observer;
     SensorType sensor_type;
 
     NS_ENSURE_ARG_POINTER(aListener);
@@ -220,9 +252,7 @@ nsSensorManager::AddListener(PRUint32 aSensorType,
     if(sensor_type == mozilla::hal_android::SENSOR_UNKNOWN)
 	return NS_ERROR_INVALID_ARG;
     
-    observer = new nsSensorObserver(sensor_type, aListener);
-    mObservers.AppendElement(observer);
-    RegisterSensorObserver(sensor_type, observer);
+    _newObserver(sensor_type, aListener);
 	
     return NS_OK;
 }
@@ -232,20 +262,16 @@ nsSensorManager::RemoveListener(PRUint32 aSensorType,
 				nsISensorListener *aListener) {
     nsSensorObserver *observer;
     SensorType sensor_type;
-    int i;
+    unsigned int i;
 
     sensor_type = _sensor_data_to_sensor_type(aSensorType);
     if(sensor_type == mozilla::hal_android::SENSOR_UNKNOWN)
 	return NS_ERROR_INVALID_ARG;
     
-    for(i = mObservers.Length() - 1; i >= 0; i--) {
+    for(i = 0; i < mObservers.Length(); i++) {
 	observer = mObservers[i];
-	if(observer->mSensorType == sensor_type &&
-	   observer->mListener.get() == aListener) {
-	    UnregisterSensorObserver(sensor_type, observer);
-	    mObservers.RemoveElementAt(i);
-	    
-	    delete observer;
+	if(observer->isMatched(sensor_type, aListener)) {
+	    _delObserver(i);
 	    return NS_OK;
 	}
     }
