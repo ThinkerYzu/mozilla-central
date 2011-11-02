@@ -116,7 +116,7 @@ nsSensorData::nsSensorData(PRUint16 aSensorType, PRUint64 aTimestamp,
 	values->AppendElement(value, false);
     }
     
-    mValues = values;
+    mValues = do_QueryInterface(values);
 }
 
 nsSensorData::~nsSensorData() {
@@ -140,8 +140,7 @@ nsSensorData::GetTimestamp(PRUint64 *stamp) {
 
 NS_IMETHODIMP
 nsSensorData::GetValues(nsIArray **aValues) {
-    if(aValues == NULL || *aValues == NULL)
-	return NS_ERROR_NULL_POINTER;
+    NS_ENSURE_ARG_POINTER(aValues);
     
     *aValues = mValues;
     NS_ADDREF(*aValues);
