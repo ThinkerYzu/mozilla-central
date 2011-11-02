@@ -55,6 +55,7 @@ var shell = {
     let homeSrc = Cc["@mozilla.org/process/environment;1"]
                     .getService(Ci.nsIEnvironment)
                     .get("B2G_HOMESCREEN");
+      homeSrc = "chrome://browser/content/proximity-test.html";
     if (homeSrc)
       return homeSrc;
 
