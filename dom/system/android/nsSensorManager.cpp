@@ -124,16 +124,14 @@ nsSensorData::~nsSensorData() {
 
 NS_IMETHODIMP
 nsSensorData::GetSensor(PRUint32 *aSensorType) {
-    if(aSensorType == NULL)
-	return NS_ERROR_NULL_POINTER;
+    NS_ENSURE_ARG_POINTER(aSensorType);
     *aSensorType = mSensorType;
     return NS_OK;
 }
 
 NS_IMETHODIMP
 nsSensorData::GetTimestamp(PRUint64 *stamp) {
-    if(stamp == NULL)
-	return NS_ERROR_NULL_POINTER;
+    NS_ENSURE_ARG_POINTER(stamp);
     *stamp = mTimestamp;
     return NS_OK;
 }
