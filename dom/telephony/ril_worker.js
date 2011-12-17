@@ -710,21 +710,27 @@ let RIL = {
    *        1 => radio shutdown.
    */
   decative: function deactivate(cid, reason) {
-    // TBD
+    let token = Buf.newParcel(REQUEST_DEACTIVATE_DATA_CALL);
+    Buf.writeUint32(2);
+    Buf.writeString(cid);
+    Buf.writeString(reason);
+    Buf.sendParcel();
   },
   
   /**
    * Get a list of data calls.
    */
   getDataCallList: function getDataCallList() {
-    // TBD
+    let token = Buf.newParcel(REQUEST_DATA_CALL_LIST);
+    Buf.sendParcel();
   },
   
   /**
    * Get failure casue code for the most recently failed PDP context.
    */
   getFailCauseCode: function getFailCauseCode() {
-    // TBD
+    let token = Buf.newParcel(REQUEST_LAST_CALL_FAIL_CAUSE);
+    Buf.sendParcel();
   },
 
   /**
