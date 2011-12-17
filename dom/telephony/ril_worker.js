@@ -672,6 +672,62 @@ let RIL = {
   },
 
   /**
+   * Setup a data call.
+   *
+   * @param cdma
+   *        Integer to indicate if use CDMA radio technology.
+   * @param apn
+   *        String containing the name of APN to connect to.
+   * @param user
+   *        String containing the username for APN.
+   * @param passwd
+   *        String containing the password for APN.
+   * @param chappap
+   *        Integer containing CHAP/PAP auth type.
+   * @param pdptype
+   *        String containing PDP type to request. ("IP", "IPV6", ...)
+   */
+  connect: function connect(cdma, apn, user, passwd, chappap, pdptype) {
+    let token = Buf.newParcel(REQUEST_SETUP_DATA_CALL);
+    Buf.writeUint32(7);
+    Buf.writeString("" + cdma);
+    Buf.writeString("0");	// profile (default)
+    Buf.writeString(apn);
+    Buf.writeString(user);
+    Buf.writeString(passwd);
+    Buf.writeString("" + chappap);
+    Buf.writeString(pdptype);
+    Buf.sendParcel();
+  },
+
+  /**
+   * Deactivate a data call.
+   *
+   * @param cid
+   *        String containing CID.
+   * @param reason
+   *        0 => no reason,
+   *        1 => radio shutdown.
+   */
+  decative: function deactivate(cid, reason) {
+    // TBD
+  },
+  
+  /**
+   * Get a list of data calls.
+   */
+  getDataCallList: function getDataCallList() {
+    // TBD
+  },
+  
+  /**
+   * Get failure casue code for the most recently failed PDP context.
+   */
+  getFailCauseCode: function getFailCauseCode() {
+    // TBD
+  },
+
+  /**
    * Handle incoming requests from the RIL. We find the method that
    * corresponds to the request type. Incidentally, the request type
    * _is_ the method name, so that's easy.
@@ -1326,6 +1382,23 @@ let Phone = {
     let smscPDU = "";
     let pdu = "";
     RIL.sendSMS(smscPDU, pdu);
+  },
+
+  connect: function connect(options) {
+    RIL.connect(options.cdma, options.apn, options.user, options.passwd,
+		options.chappap, options.reason);
+  },
+
+  deactivate: function deactivate(options) {
+    RIL.connect(options.cid, options.reason);
+  },
+
+  getDataCallList: function getDataCallList(options) {
+    RIL.getDataCallList();
+  },
+  
+  getFailCauseCode: function getFailCauseCode(options) {
+    RIL.getFailCauseCode();
   },
 
   /**

@@ -68,10 +68,12 @@ nsTelephonyWorker.prototype = {
                                     contractID: TELEPHONYWORKER_CONTRACTID,
                                     classDescription: "TelephonyWorker",
                                     interfaces: [Ci.nsIRadioWorker,
-                                                 Ci.nsITelephone]}),
+                                                 Ci.nsITelephone,
+						 Ci.nsIPDP]}),
 
   QueryInterface: XPCOMUtils.generateQI([Ci.nsIRadioWorker,
-                                         Ci.nsITelephone]),
+                                         Ci.nsITelephone,
+					 Ci.nsIPDP]),
 
   onerror: function onerror(event) {
     // It is very important to call preventDefault on the event here.
@@ -169,6 +171,29 @@ nsTelephonyWorker.prototype = {
     this._callbacks.splice(index, 1);
   },
 
+  connect: function connect(cdma, apn, user, passwd, chappap, pdptype) {
+    this.worker.postMessage({type: "connect",
+			     apn: apn,
+			     user: user,
+			     passwd: passwd,
+			     chappap: chappap,
+			     pdptype: pdptype});
+  },
+    
+  decative: function deactivate(cid, reason) {
+    this.worker.postMessage({type: "deactivate",
+			     cid: cid,
+			     reason: reason});
+  },
+  
+  getDataCallList: function getDataCallList() {
+    this.worker.postMessage({type: "getDataCallList"});
+  },
+  
+  getFailCauseCode: function getFailCauseCode() {
+    this.worker.postMessage({type: "getFailCauseCode"});
+  },
+  
 };
 
 const NSGetFactory = XPCOMUtils.generateNSGetFactory([nsTelephonyWorker]);
