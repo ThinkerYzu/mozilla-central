@@ -1384,19 +1384,31 @@ let Phone = {
     RIL.sendSMS(smscPDU, pdu);
   },
 
+  /**
+   * Setup a data call (PDP).
+   */
   connect: function connect(options) {
     RIL.connect(options.cdma, options.apn, options.user, options.passwd,
 		options.chappap, options.reason);
   },
 
+  /**
+   * Deactivate a data call (PDP).
+   */
   deactivate: function deactivate(options) {
     RIL.connect(options.cid, options.reason);
   },
 
+  /**
+   * Get the list of data calls.
+   */
   getDataCallList: function getDataCallList(options) {
     RIL.getDataCallList();
   },
   
+  /**
+   * Get failure cause code for the last failed PDP context.
+   */
   getFailCauseCode: function getFailCauseCode(options) {
     RIL.getFailCauseCode();
   },
