@@ -58,9 +58,9 @@ interface mozIDOMTelephony : nsIDOMEventTarget {
   readonly attribute jsval cardState;
 
   // PDP fucntions
-  void connect(in int cdma,
+  void connect(in long cdma,
 	       in DOMString apn, in DOMString user, in DOMString passwd,
-	       in int chappap, in DOMString pdptype);
+	       in long chappap, in DOMString pdptype);
   void deactivate(in DOMString cid, in DOMString reason);
   void getDataCallList();
   void getFailCauseCode();
