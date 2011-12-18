@@ -140,6 +140,12 @@ nsTelephonyWorker.prototype = {
    */
   onmessage: function onmessage(event) {
     let message = event.data;
+    
+    if(message.type == "dump") {
+      dump(message.msg);
+      return;
+    }
+    
     debug("Received message: " + JSON.stringify(message));
     let value;
     switch (message.type) {

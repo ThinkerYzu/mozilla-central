@@ -902,7 +902,16 @@ RIL[REQUEST_SEND_SMS] = function REQUEST_SEND_SMS() {
   Phone.onSendSMS(messageRef, ackPDU, errorCode);
 };
 RIL[REQUEST_SEND_SMS_EXPECT_MORE] = null;
-RIL[REQUEST_SETUP_DATA_CALL] = null;
+RIL[REQUEST_SETUP_DATA_CALL] = function REQUEST_SETUP_DATA_CALL() {
+  let strs = Buf.readStringList();
+  let cid = strs[0];
+  let ifname = strs[1];
+  let ipaddr = strs[2];
+  let dns = strs.length >= 4? strs[3]: "";
+  let gw = strs.length >= 5? str[4]: "";
+  
+  Phone.onSetupDataCall(cid, ifname, ipaddr, dns, gw);
+};
 RIL[REQUEST_SIM_IO] = null;
 RIL[REQUEST_SEND_USSD] = null;
 RIL[REQUEST_CANCEL_USSD] = null;
@@ -1336,6 +1345,15 @@ let Phone = {
     //TODO
   },
 
+  onSetupDataCall: function onSetupDataCall(cid, ifname, ipaddr, dns, gw) {
+    this.sendDOMMessage({type: "datacall",
+			 cid: cid,
+			 ifname: ifname,
+			 ipaddr: ipaddr,
+			 dns: dns,
+			 gateway: gw});
+  },
+
 
   /**
    * Outgoing requests to the RIL. These can be triggered from the
@@ -1428,6 +1446,7 @@ let Phone = {
    * Setup a data call (PDP).
    */
   connect: function connect(options) {
+    if(DEBUG) debug("connect: " + JSON.stringify(options));
     RIL.connect(options.cdma, options.apn, options.user, options.passwd,
 		options.chappap, options.reason);
   },
@@ -1436,7 +1455,7 @@ let Phone = {
    * Deactivate a data call (PDP).
    */
   deactivate: function deactivate(options) {
-    RIL.connect(options.cid, options.reason);
+    RIL.deactivate(options.cid, options.reason);
   },
 
   /**
@@ -1486,7 +1505,8 @@ let Phone = {
 if (!this.debug) {
   // Debugging stub that goes nowhere.
   this.debug = function debug(message) {
-    dump("RIL Worker: " + message + "\n");
+    postMessage({type: "dump", msg: "RIL Worker: " + message + "\n"});
+    //dump("RIL Worker: " + message + "\n");
   };
 }
 
@@ -1499,6 +1519,7 @@ function onRILMessage(data) {
 };
 
 onmessage = function onmessage(event) {
+  debug("RIL Worker onmessage " + JSON.stringify(event.data));
   Phone.handleDOMMessage(event.data);
 };
 
