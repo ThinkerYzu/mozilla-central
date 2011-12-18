@@ -293,6 +293,7 @@ nsTelephonyWorker.prototype = {
 
   connect: function connect(cdma, apn, user, passwd, chappap, pdptype) {
     this.worker.postMessage({type: "connect",
+			     cdma: cdma,
 			     apn: apn,
 			     user: user,
 			     passwd: passwd,
