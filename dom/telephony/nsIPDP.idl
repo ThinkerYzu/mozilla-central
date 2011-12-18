@@ -46,9 +46,9 @@ interface nsIPDPCallback : nsISupports {
 
 [scriptable, uuid(0b629fbe-2559-11e1-9f05-0013025069f5)]
 interface nsIPDP : nsISupports {
-  void connect(in int cdma,
+  void connect(in long cdma,
 	       in DOMString apn, in DOMString user, in DOMString passwd,
-	       in int chappap, in DOMString pdptype);
+	       in long chappap, in DOMString pdptype);
   void deactivate(in DOMString cid, in DOMString reason);
   void getDataCallList();
   void getFailCauseCode();
