@@ -90,32 +90,39 @@ using namespace js::types;
 using namespace js::unicode;
 
 static JSLinearString *
-ArgToRootedString(JSContext *cx, uintN argc, Value *vp, uintN arg)
+ArgToRootedString(JSContext *cx, CallArgs &args, uintN argno)
 {
-    if (arg >= argc)
+    if (argno >= args.length())
         return cx->runtime->atomState.typeAtoms[JSTYPE_VOID];
-    vp += 2 + arg;
 
-    if (!ToPrimitive(cx, JSTYPE_STRING, vp))
+    Value *arg = &args[argno];
+    if (!ToPrimitive(cx, JSTYPE_STRING, arg))
         return NULL;
 
     JSLinearString *str;
-    if (vp->isString()) {
-        str = vp->toString()->ensureLinear(cx);
-    } else if (vp->isBoolean()) {
-        str = cx->runtime->atomState.booleanAtoms[(int)vp->toBoolean()];
-    } else if (vp->isNull()) {
+    if (arg->isString()) {
+        str = arg->toString()->ensureLinear(cx);
+    } else if (arg->isBoolean()) {
+        str = cx->runtime->atomState.booleanAtoms[(int)arg->toBoolean()];
+    } else if (arg->isNull()) {
         str = cx->runtime->atomState.nullAtom;
-    } else if (vp->isUndefined()) {
+    } else if (arg->isUndefined()) {
         str = cx->runtime->atomState.typeAtoms[JSTYPE_VOID];
-    }
-    else {
-        str = NumberToString(cx, vp->toNumber());
+    } else {
+        str = NumberToString(cx, arg->toNumber());
         if (!str)
             return NULL;
-        vp->setString(str);
+        arg->setString(str);
     }
+
     return str;
+}
+
+static JSLinearString *
+ArgToRootedString(JSContext *cx, uintN argc, Value *vp, uintN argno)
+{
+    CallArgs args = CallArgsFromVp(argc, vp);
+    return ArgToRootedString(cx, args, argno);
 }
 
 /*
@@ -133,10 +140,10 @@ str_encodeURI(JSContext *cx, uintN argc, Value *vp);
 static JSBool
 str_encodeURI_Component(JSContext *cx, uintN argc, Value *vp);
 
-static const uint32 INVALID_UTF8 = UINT32_MAX;
+static const uint32_t INVALID_UTF8 = UINT32_MAX;
 
-static uint32
-Utf8ToOneUcs4Char(const uint8 *utf8Buffer, int utf8Length);
+static uint32_t
+Utf8ToOneUcs4Char(const uint8_t *utf8Buffer, int utf8Length);
 
 /*
  * Global string methods
@@ -157,7 +164,7 @@ str_escape(JSContext *cx, uintN argc, Value *vp)
     size_t length = str->length();
     const jschar *chars = str->chars();
 
-    static const uint8 shouldPassThrough[256] = {
+    static const uint8_t shouldPassThrough[256] = {
          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
          0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,1,       /*    !"#$%&'()*+,-./  */
@@ -170,8 +177,8 @@ str_escape(JSContext *cx, uintN argc, Value *vp)
 
     /* In step 7, exactly 69 characters should pass through unencoded. */
 #ifdef DEBUG
-    int count = 0;
-    for (uint i = 0; i < sizeof(shouldPassThrough); i++) {
+    size_t count = 0;
+    for (size_t i = 0; i < sizeof(shouldPassThrough); i++) {
         if (shouldPassThrough[i]) {
             count++;
         }
@@ -238,68 +245,128 @@ str_escape(JSContext *cx, uintN argc, Value *vp)
     return JS_TRUE;
 }
 
+static inline bool
+Unhex4(const jschar *chars, jschar *result)
+{
+    jschar a = chars[0],
+           b = chars[1],
+           c = chars[2],
+           d = chars[3];
+
+    if (!(JS7_ISHEX(a) && JS7_ISHEX(b) && JS7_ISHEX(c) && JS7_ISHEX(d)))
+        return false;
+
+    *result = (((((JS7_UNHEX(a) << 4) + JS7_UNHEX(b)) << 4) + JS7_UNHEX(c)) << 4) + JS7_UNHEX(d);
+    return true;
+}
+
+static inline bool
+Unhex2(const jschar *chars, jschar *result)
+{
+    jschar a = chars[0],
+           b = chars[1];
+
+    if (!(JS7_ISHEX(a) && JS7_ISHEX(b)))
+        return false;
+
+    *result = (JS7_UNHEX(a) << 4) + JS7_UNHEX(b);
+    return true;
+}
+
 /* ES5 B.2.2 */
 static JSBool
 str_unescape(JSContext *cx, uintN argc, Value *vp)
 {
-    JSLinearString *str = ArgToRootedString(cx, argc, vp, 0);
+    CallArgs args = CallArgsFromVp(argc, vp);
+
+    /* Step 1. */
+    JSLinearString *str = ArgToRootedString(cx, args, 0);
     if (!str)
         return false;
 
+    /* Step 2. */
     size_t length = str->length();
     const jschar *chars = str->chars();
 
-    /* Start by allocating the maximum required space for the new string. */
-    jschar *newchars = (jschar *) cx->malloc_((length + 1) * sizeof(jschar));
-    if (!newchars)
-        return false;
+    /* Step 3. */
+    StringBuffer sb(cx);
 
-    size_t ni = 0, i = 0;
-    bool escapeFound = false;
-    while (i < length) {
-        jschar ch = chars[i++];
-        if (ch == '%') {
-            /* Incomplete escapes are interpreted as literal characters. */
-            if (i + 1 < length &&
-                JS7_ISHEX(chars[i]) && JS7_ISHEX(chars[i + 1]))
-            {
-                ch = JS7_UNHEX(chars[i]) * 16 + JS7_UNHEX(chars[i + 1]);
-                i += 2;
-                escapeFound = true;
-            } else if (i + 4 < length && chars[i] == 'u' &&
-                       JS7_ISHEX(chars[i + 1]) && JS7_ISHEX(chars[i + 2]) &&
-                       JS7_ISHEX(chars[i + 3]) && JS7_ISHEX(chars[i + 4]))
-            {
-                ch = (((((JS7_UNHEX(chars[i + 1]) << 4)
-                        + JS7_UNHEX(chars[i + 2])) << 4)
-                      + JS7_UNHEX(chars[i + 3])) << 4)
-                    + JS7_UNHEX(chars[i + 4]);
-                i += 5;
-                escapeFound = true;
+    /*
+     * Note that the spec algorithm has been optimized to avoid building
+     * a string in the case where no escapes are present.
+     */
+
+    /* Step 4. */
+    size_t k = 0;
+    bool building = false;
+
+    while (true) {
+        /* Step 5. */
+        if (k == length) {
+            JSLinearString *result;
+            if (building) {
+                result = sb.finishString();
+                if (!result)
+                    return false;
+            } else {
+                result = str;
             }
-        }
-        newchars[ni++] = ch;
-    }
-    newchars[ni] = 0;
 
-    /* If escapes were found, shrink the string. */
-    if (escapeFound) {
-        JS_ASSERT(ni < length);
-        jschar *tmpchars = (jschar *) cx->realloc_(newchars, (ni + 1) * sizeof(jschar));
-        if (!tmpchars) {
-            cx->free_(newchars);
-            return false;
+            args.rval().setString(result);
+            return true;
         }
-        newchars = tmpchars;
-    }
 
-    JSString *retstr = js_NewString(cx, newchars, ni);
-    if (!retstr) {
-        cx->free_(newchars);
-        return false;
+        /* Step 6. */
+        jschar c = chars[k];
+
+        /* Step 7. */
+        if (c != '%')
+            goto step_18;
+
+        /* Step 8. */
+        if (k > length - 6)
+            goto step_14;
+
+        /* Step 9. */
+        if (chars[k + 1] != 'u')
+            goto step_14;
+
+#define ENSURE_BUILDING                             \
+    JS_BEGIN_MACRO                                  \
+        if (!building) {                            \
+            building = true;                        \
+            if (!sb.reserve(length))                \
+                return false;                       \
+            sb.infallibleAppend(chars, chars + k);  \
+        }                                           \
+    JS_END_MACRO
+
+        /* Step 10-13. */
+        if (Unhex4(&chars[k + 2], &c)) {
+            ENSURE_BUILDING;
+            k += 5;
+            goto step_18;
+        }
+
+      step_14:
+        /* Step 14. */
+        if (k > length - 3)
+            goto step_18;
+
+        /* Step 15-17. */
+        if (Unhex2(&chars[k + 1], &c)) {
+            ENSURE_BUILDING;
+            k += 2;
+        }
+
+      step_18:
+        if (building)
+            sb.infallibleAppend(c);
+
+        /* Step 19. */
+        k += 1;
     }
-    vp->setString(retstr);
-    return true;
+#undef ENSURE_BUILDING
 }
 
 #if JS_HAS_UNEVAL
@@ -377,7 +444,7 @@ str_resolve(JSContext *cx, JSObject *obj, jsid id, uintN flags,
         JSString *str1 = cx->runtime->staticStrings.getUnitStringForElement(cx, str, size_t(slot));
         if (!str1)
             return JS_FALSE;
-        if (!obj->defineElement(cx, uint32(slot), StringValue(str1), NULL, NULL,
+        if (!obj->defineElement(cx, uint32_t(slot), StringValue(str1), NULL, NULL,
                                 STRING_ELEMENT_ATTRS)) {
             return JS_FALSE;
         }
@@ -502,7 +569,7 @@ js_str_toString(JSContext *cx, uintN argc, Value *vp)
  */
 
 JS_ALWAYS_INLINE bool
-ValueToIntegerRange(JSContext *cx, const Value &v, int32 *out)
+ValueToIntegerRange(JSContext *cx, const Value &v, int32_t *out)
 {
     if (v.isInt32()) {
         *out = v.toInt32();
@@ -515,7 +582,7 @@ ValueToIntegerRange(JSContext *cx, const Value &v, int32 *out)
         else if (d < INT32_MIN)
             *out = INT32_MIN;
         else
-            *out = int32(d);
+            *out = int32_t(d);
     }
 
     return true;
@@ -528,9 +595,9 @@ str_substring(JSContext *cx, uintN argc, Value *vp)
     if (!str)
         return false;
 
-    int32 length, begin, end;
+    int32_t length, begin, end;
     if (argc > 0) {
-        end = length = int32(str->length());
+        end = length = int32_t(str->length());
 
         if (!ValueToIntegerRange(cx, vp[2], &begin))
             return false;
@@ -686,7 +753,7 @@ str_localeCompare(JSContext *cx, uintN argc, Value *vp)
             vp[2].setString(thatStr);
             return cx->localeCallbacks->localeCompare(cx, str, thatStr, vp);
         }
-        int32 result;
+        int32_t result;
         if (!CompareStrings(cx, str, thatStr, &result))
             return false;
         vp->setInt32(result);
@@ -773,24 +840,24 @@ out_of_range:
  * Return the index of pat in text, or -1 if not found.
  */
 static const jsuint sBMHCharSetSize = 256; /* ISO-Latin-1 */
-static const jsuint sBMHPatLenMax   = 255; /* skip table element is uint8 */
+static const jsuint sBMHPatLenMax   = 255; /* skip table element is uint8_t */
 static const jsint  sBMHBadPattern  = -2;  /* return value if pat is not ISO-Latin-1 */
 
 jsint
 js_BoyerMooreHorspool(const jschar *text, jsuint textlen,
                       const jschar *pat, jsuint patlen)
 {
-    uint8 skip[sBMHCharSetSize];
+    uint8_t skip[sBMHCharSetSize];
 
     JS_ASSERT(0 < patlen && patlen <= sBMHPatLenMax);
     for (jsuint i = 0; i < sBMHCharSetSize; i++)
-        skip[i] = (uint8)patlen;
+        skip[i] = (uint8_t)patlen;
     jsuint m = patlen - 1;
     for (jsuint i = 0; i < m; i++) {
         jschar c = pat[i];
         if (c >= sBMHCharSetSize)
             return sBMHBadPattern;
-        skip[c] = (uint8)(m - i);
+        skip[c] = (uint8_t)(m - i);
     }
     jschar c;
     for (jsuint k = m;
@@ -839,7 +906,7 @@ UnrolledMatch(const jschar *text, jsuint textlen, const jschar *pat, jsuint patl
     const jschar p0 = *pat;
     const jschar *const patNext = pat + 1;
     const typename InnerMatch::Extent extent = InnerMatch::computeExtent(pat, patlen);
-    uint8 fixup;
+    uint8_t fixup;
 
     const jschar *t = text;
     switch ((textend - t) & 7) {
@@ -1230,7 +1297,7 @@ class FlatMatch
     JSLinearString  *patstr;
     const jschar    *pat;
     size_t          patlen;
-    int32           match_;
+    int32_t         match_;
 
     friend class RegExpGuard;
 
@@ -1243,7 +1310,7 @@ class FlatMatch
      * Note: The match is -1 when the match is performed successfully,
      * but no match is found.
      */
-    int32 match() const { return match_; }
+    int32_t match() const { return match_; }
 };
 
 /*
@@ -2079,7 +2146,7 @@ str_replace_flat_lambda(JSContext *cx, uintN argc, Value *vp, ReplaceData &rdata
         return false;
 
     /* lambda(matchStr, matchStart, textstr) */
-    static const uint32 lambdaArgc = 3;
+    static const uint32_t lambdaArgc = 3;
     if (!cx->stack.pushInvokeArgs(cx, lambdaArgc, &rdata.args))
         return false;
 
@@ -2127,7 +2194,7 @@ js::str_replace(JSContext *cx, uintN argc, Value *vp)
     rdata.str = ThisToStringForStringProto(cx, vp);
     if (!rdata.str)
         return false;
-    static const uint32 optarg = 2;
+    static const uint32_t optarg = 2;
 
     if (!rdata.g.init(argc, vp))
         return false;
@@ -2251,7 +2318,7 @@ class SplitMatchResult {
 
 template<class Matcher>
 static JSObject *
-SplitHelper(JSContext *cx, JSLinearString *str, uint32 limit, Matcher splitMatch, TypeObject *type)
+SplitHelper(JSContext *cx, JSLinearString *str, uint32_t limit, Matcher splitMatch, TypeObject *type)
 {
     size_t strLength = str->length();
     SplitMatchResult result;
@@ -2452,7 +2519,7 @@ js::str_split(JSContext *cx, uintN argc, Value *vp)
     AddTypeProperty(cx, type, NULL, Type::StringType());
 
     /* Step 5: Use the second argument as the split limit, if given. */
-    uint32 limit;
+    uint32_t limit;
     if (argc > 1 && !vp[3].isUndefined()) {
         jsdouble d;
         if (!ToNumber(cx, vp[3], &d))
@@ -2533,9 +2600,9 @@ str_substr(JSContext *cx, uintN argc, Value *vp)
     if (!str)
         return false;
 
-    int32 length, len, begin;
+    int32_t length, len, begin;
     if (argc > 0) {
-        length = int32(str->length());
+        length = int32_t(str->length());
         if (!ValueToIntegerRange(cx, vp[2], &begin))
             return false;
 
@@ -2560,7 +2627,7 @@ str_substr(JSContext *cx, uintN argc, Value *vp)
                 goto out;
             }
 
-            if (uint32(length) < uint32(begin + len))
+            if (uint32_t(length) < uint32_t(begin + len))
                 len = length - begin;
         }
 
@@ -3077,8 +3144,7 @@ StringBuffer::extractWellSized()
 
     /* For medium/big buffers, avoid wasting more than 1/4 of the memory. */
     JS_ASSERT(capacity >= length);
-    if (length > CharBuffer::sMaxInlineStorage &&
-        capacity - length > (length >> 2)) {
+    if (length > CharBuffer::sMaxInlineStorage && capacity - length > length / 4) {
         size_t bytes = sizeof(jschar) * (length + 1);
         JSContext *cx = context();
         jschar *tmp = (jschar *)cx->realloc_(buf, bytes);
@@ -3352,7 +3418,7 @@ EqualStrings(JSLinearString *str1, JSLinearString *str2)
 namespace js {
 
 static bool
-CompareStringsImpl(JSContext *cx, JSString *str1, JSString *str2, int32 *result)
+CompareStringsImpl(JSContext *cx, JSString *str1, JSString *str2, int32_t *result)
 {
     JS_ASSERT(str1);
     JS_ASSERT(str2);
@@ -3374,17 +3440,17 @@ CompareStringsImpl(JSContext *cx, JSString *str1, JSString *str2, int32 *result)
 
     size_t n = JS_MIN(l1, l2);
     for (size_t i = 0; i < n; i++) {
-        if (int32 cmp = s1[i] - s2[i]) {
+        if (int32_t cmp = s1[i] - s2[i]) {
             *result = cmp;
             return true;
         }
     }
-    *result = (int32)(l1 - l2);
+    *result = (int32_t)(l1 - l2);
     return true;
 }
 
 bool
-CompareStrings(JSContext *cx, JSString *str1, JSString *str2, int32 *result)
+CompareStrings(JSContext *cx, JSString *str1, JSString *str2, int32_t *result)
 {
     return CompareStringsImpl(cx, str1, str2, result);
 }
@@ -3601,8 +3667,8 @@ DeflateStringToUTF8Buffer(JSContext *cx, const jschar *src, size_t srclen,
 {
     size_t i, utf8Len;
     jschar c, c2;
-    uint32 v;
-    uint8 utf8buf[6];
+    uint32_t v;
+    uint8_t utf8buf[6];
 
     bool useCESU8 = fc == CESU8Encoding;
     size_t dstlen = *dstlenp;
@@ -3691,7 +3757,7 @@ InflateUTF8StringToBuffer(JSContext *cx, const char *src, size_t srclen,
                               jschar *dst, size_t *dstlenp, FlationCoding fc)
 {
     size_t dstlen, origDstlen, offset, j, n;
-    uint32 v;
+    uint32_t v;
 
     dstlen = dst ? *dstlenp : (size_t) -1;
     origDstlen = dstlen;
@@ -3699,7 +3765,7 @@ InflateUTF8StringToBuffer(JSContext *cx, const char *src, size_t srclen,
     bool useCESU8 = fc == CESU8Encoding;
 
     while (srclen) {
-        v = (uint8) *src;
+        v = (uint8_t) *src;
         n = 1;
         if (v & 0x80) {
             while (v & (0x80 >> n))
@@ -3712,7 +3778,7 @@ InflateUTF8StringToBuffer(JSContext *cx, const char *src, size_t srclen,
                 if ((src[j] & 0xC0) != 0x80)
                     goto badCharacter;
             }
-            v = Utf8ToOneUcs4Char((uint8 *)src, n);
+            v = Utf8ToOneUcs4Char((uint8_t *)src, n);
             if (v >= 0x10000 && !useCESU8) {
                 v -= 0x10000;
                 if (v > 0xFFFFF || dstlen < 2) {
@@ -3902,7 +3968,7 @@ Encode(JSContext *cx, JSString *str, const jschar *unescapedSet,
                                  JSMSG_BAD_URI, NULL);
                 return JS_FALSE;
             }
-            uint32 v;
+            uint32_t v;
             if (c < 0xD800 || c > 0xDBFF) {
                 v = c;
             } else {
@@ -3920,7 +3986,7 @@ Encode(JSContext *cx, JSString *str, const jschar *unescapedSet,
                 }
                 v = ((c - 0xD800) << 10) + (c2 - 0xDC00) + 0x10000;
             }
-            uint8 utf8buf[4];
+            uint8_t utf8buf[4];
             size_t L = js_OneUcs4ToUtf8Char(utf8buf, v);
             for (size_t j = 0; j < L; j++) {
                 hexBuf[1] = HexDigits[utf8buf[j] >> 4];
@@ -3966,8 +4032,8 @@ Decode(JSContext *cx, JSString *str, const jschar *reservedSet, Value *rval)
                     n++;
                 if (n == 1 || n > 4)
                     goto report_bad_uri;
-                uint8 octets[4];
-                octets[0] = (uint8)B;
+                uint8_t octets[4];
+                octets[0] = (uint8_t)B;
                 if (k + 3 * (n - 1) >= length)
                     goto report_bad_uri;
                 for (intN j = 1; j < n; j++) {
@@ -3982,7 +4048,7 @@ Decode(JSContext *cx, JSString *str, const jschar *reservedSet, Value *rval)
                     k += 2;
                     octets[j] = (char)B;
                 }
-                uint32 v = Utf8ToOneUcs4Char(octets, n);
+                uint32_t v = Utf8ToOneUcs4Char(octets, n);
                 if (v >= 0x10000) {
                     v -= 0x10000;
                     if (v > 0xFFFFF)
@@ -4059,16 +4125,16 @@ str_encodeURI_Component(JSContext *cx, uintN argc, Value *vp)
  * least 4 bytes long.  Return the number of UTF-8 bytes of data written.
  */
 int
-js_OneUcs4ToUtf8Char(uint8 *utf8Buffer, uint32 ucs4Char)
+js_OneUcs4ToUtf8Char(uint8_t *utf8Buffer, uint32_t ucs4Char)
 {
     int utf8Length = 1;
 
     JS_ASSERT(ucs4Char <= 0x10FFFF);
     if (ucs4Char < 0x80) {
-        *utf8Buffer = (uint8)ucs4Char;
+        *utf8Buffer = (uint8_t)ucs4Char;
     } else {
         int i;
-        uint32 a = ucs4Char >> 11;
+        uint32_t a = ucs4Char >> 11;
         utf8Length = 2;
         while (a) {
             a >>= 5;
@@ -4076,10 +4142,10 @@ js_OneUcs4ToUtf8Char(uint8 *utf8Buffer, uint32 ucs4Char)
         }
         i = utf8Length;
         while (--i) {
-            utf8Buffer[i] = (uint8)((ucs4Char & 0x3F) | 0x80);
+            utf8Buffer[i] = (uint8_t)((ucs4Char & 0x3F) | 0x80);
             ucs4Char >>= 6;
         }
-        *utf8Buffer = (uint8)(0x100 - (1 << (8-utf8Length)) + ucs4Char);
+        *utf8Buffer = (uint8_t)(0x100 - (1 << (8-utf8Length)) + ucs4Char);
     }
     return utf8Length;
 }
@@ -4089,8 +4155,8 @@ js_OneUcs4ToUtf8Char(uint8 *utf8Buffer, uint32 ucs4Char)
  * character.  It is assumed that the caller already checked that the sequence
  * is valid.
  */
-static uint32
-Utf8ToOneUcs4Char(const uint8 *utf8Buffer, int utf8Length)
+static uint32_t
+Utf8ToOneUcs4Char(const uint8_t *utf8Buffer, int utf8Length)
 {
     JS_ASSERT(1 <= utf8Length && utf8Length <= 4);
 
@@ -4100,12 +4166,12 @@ Utf8ToOneUcs4Char(const uint8 *utf8Buffer, int utf8Length)
     }
 
     /* from Unicode 3.1, non-shortest form is illegal */
-    static const uint32 minucs4Table[] = { 0x80, 0x800, 0x10000 };
+    static const uint32_t minucs4Table[] = { 0x80, 0x800, 0x10000 };
 
     JS_ASSERT((*utf8Buffer & (0x100 - (1 << (7 - utf8Length)))) ==
               (0x100 - (1 << (8 - utf8Length))));
-    uint32 ucs4Char = *utf8Buffer++ & ((1 << (7 - utf8Length)) - 1);
-    uint32 minucs4Char = minucs4Table[utf8Length - 2];
+    uint32_t ucs4Char = *utf8Buffer++ & ((1 << (7 - utf8Length)) - 1);
+    uint32_t minucs4Char = minucs4Table[utf8Length - 2];
     while (--utf8Length) {
         JS_ASSERT((*utf8Buffer & 0xC0) == 0x80);
         ucs4Char = (ucs4Char << 6) | (*utf8Buffer++ & 0x3F);
@@ -4120,7 +4186,7 @@ Utf8ToOneUcs4Char(const uint8 *utf8Buffer, int utf8Length)
 namespace js {
 
 size_t
-PutEscapedStringImpl(char *buffer, size_t bufferSize, FILE *fp, JSLinearString *str, uint32 quote)
+PutEscapedStringImpl(char *buffer, size_t bufferSize, FILE *fp, JSLinearString *str, uint32_t quote)
 {
     enum {
         STOP, FIRST_QUOTE, LAST_QUOTE, CHARS, ESCAPE_START, ESCAPE_MORE

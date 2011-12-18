@@ -69,6 +69,7 @@
 #include "mozStorageStatementData.h"
 #include "StorageBaseStatementInternal.h"
 #include "SQLCollations.h"
+#include "FileSystemModule.h"
 
 #include "prlog.h"
 #include "prprf.h"
@@ -157,6 +158,19 @@ sqlite3_T_blob(sqlite3_context *aCtx,
 }
 
 #include "variantToSQLiteT_impl.h"
+
+////////////////////////////////////////////////////////////////////////////////
+//// Modules
+
+struct Module
+{
+  const char* name;
+  int (*registerFunc)(sqlite3*, const char*);
+};
+
+Module gModules[] = {
+  { "filesystem", RegisterFileSystemModule }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Local Functions
@@ -536,6 +550,17 @@ Connection::Connection(Service *aService,
 Connection::~Connection()
 {
   (void)Close();
+
+  // The memory reporters should have been already unregistered if the APIs
+  // have been used properly.  But if an async connection hasn't been closed
+  // with asyncClose(), the connection is about to leak and it's too late to do
+  // anything about it.  So we mark the memory reporters accordingly so that
+  // the leak will be obvious in about:memory.
+  for (PRUint32 i = 0; i < mMemoryReporters.Length(); i++) {
+    if (mMemoryReporters[i]) {
+      mMemoryReporters[i]->markAsLeaked();
+    }
+  }
 }
 
 NS_IMPL_THREADSAFE_ADDREF(Connection)
@@ -697,6 +722,28 @@ Connection::initialize(nsIFile *aDatabaseFile,
       break;
   }
 
+  nsRefPtr<StorageMemoryReporter> reporter;
+  nsCString filename = this->getFilename();
+
+  reporter =
+    new StorageMemoryReporter(this->mDBConn, filename,
+                              StorageMemoryReporter::Cache_Used);
+  mMemoryReporters.AppendElement(reporter);
+
+  reporter =
+    new StorageMemoryReporter(this->mDBConn, filename,
+                              StorageMemoryReporter::Schema_Used);
+  mMemoryReporters.AppendElement(reporter);
+
+  reporter =
+    new StorageMemoryReporter(this->mDBConn, filename,
+                              StorageMemoryReporter::Stmt_Used);
+  mMemoryReporters.AppendElement(reporter);
+
+  for (PRUint32 i = 0; i < mMemoryReporters.Length(); i++) {
+    (void)::NS_RegisterMemoryReporter(mMemoryReporters[i]);
+  }
+
   return NS_OK;
 }
 
@@ -833,6 +880,11 @@ Connection::internalClose()
   }
 #endif
 
+  for (PRUint32 i = 0; i < mMemoryReporters.Length(); i++) {
+    (void)::NS_UnregisterMemoryReporter(mMemoryReporters[i]);
+    mMemoryReporters[i] = nsnull;
+  }
+
   int srv = ::sqlite3_close(mDBConn);
   NS_ASSERTION(srv == SQLITE_OK,
                "sqlite3_close failed. There are probably outstanding statements that are listed above!");
@@ -961,9 +1013,8 @@ Connection::Close()
     return NS_ERROR_NOT_INITIALIZED;
 
   { // Make sure we have not executed any asynchronous statements.
-    // If this fails, the mDBConn will be left open, resulting in a leak.
-    // Ideally we'd schedule some code to destroy the mDBConn once all its
-    // async statements have finished executing;  see bug 704030.
+    // If this fails, the connection will be left open!  See ~Connection() for
+    // more details.
     MutexAutoLock lockedScope(sharedAsyncExecutionMutex);
     bool asyncCloseWasCalled = !mAsyncExecutionThread;
     NS_ENSURE_TRUE(asyncCloseWasCalled, NS_ERROR_UNEXPECTED);
@@ -1088,6 +1139,16 @@ Connection::GetLastInsertRowID(PRInt64 *_id)
 
   sqlite_int64 id = ::sqlite3_last_insert_rowid(mDBConn);
   *_id = id;
+
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+Connection::GetAffectedRows(PRInt32 *_rows)
+{
+  if (!mDBConn) return NS_ERROR_NOT_INITIALIZED;
+
+  *_rows = ::sqlite3_changes(mDBConn);
 
   return NS_OK;
 }
@@ -1473,6 +1534,25 @@ Connection::SetGrowthIncrement(PRInt32 aChunkSize, const nsACString &aDatabaseNa
                                &aChunkSize);
 #endif
   return NS_OK;
+}
+
+NS_IMETHODIMP
+Connection::EnableModule(const nsACString& aModuleName)
+{
+  if (!mDBConn) return NS_ERROR_NOT_INITIALIZED;
+
+  for (size_t i = 0; i < ArrayLength(gModules); i++) {
+    struct Module* m = &gModules[i];
+    if (aModuleName.Equals(m->name)) {
+      int srv = m->registerFunc(mDBConn, m->name);
+      if (srv != SQLITE_OK)
+        return convertResultCode(srv);
+
+      return NS_OK;
+    }
+  }
+
+  return NS_ERROR_FAILURE;
 }
 
 } // namespace storage

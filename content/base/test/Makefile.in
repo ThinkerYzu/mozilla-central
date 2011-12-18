@@ -45,6 +45,7 @@ include $(DEPTH)/config/autoconf.mk
 
 DIRS += \
   chrome \
+  websocket_hybi \
   $(NULL)
 
 MODULE = content
@@ -533,6 +534,11 @@ _TEST_FILES2 = \
 		test_bug702439.html \
 		test_bug702439.html^headers^ \
 		file_bug702439.html \
+		test_bug707142.html \
+		file_bug707142_baseline.json \
+		file_bug707142_bom.json \
+		file_bug707142_utf-16.json \
+		test_reentrant_flush.html \
 		$(NULL)
 
 _CHROME_FILES =	\

@@ -16,7 +16,7 @@
               android:paddingRight="40dip"
               android:hint="@string/awesomebar_default_text"
               android:inputType="textUri"
-              android:imeOptions="actionGo"
+              android:imeOptions="actionSearch"
               android:singleLine="true"
               android:gravity="center_vertical|left">
              <requestFocus/>
@@ -36,6 +36,10 @@
 
     <org.mozilla.gecko.AwesomeBarTabs android:id="@+id/awesomebar_tabs"
                                       android:layout_width="match_parent"
-                                      android:layout_height="wrap_content"/>
+                                      android:layout_height="wrap_content">
+
+        <include layout="@layout/awesomebar_tabs"/>
+
+    </org.mozilla.gecko.AwesomeBarTabs>
 
 </LinearLayout>

@@ -433,7 +433,6 @@ js_NewContext(JSRuntime *rt, size_t stackChunkSize)
         return NULL;
 
     JS_ASSERT(cx->findVersion() == JSVERSION_DEFAULT);
-    VOUCH_DOES_NOT_REQUIRE_STACK();
 
     if (!cx->busyArrays.init()) {
         Foreground::delete_(cx);
@@ -745,7 +744,10 @@ ReportError(JSContext *cx, const char *message, JSErrorReport *reportp,
     }
 }
 
-/* The report must be initially zeroed. */
+/*
+ * The given JSErrorReport object have been zeroed and must not outlive
+ * cx->fp() (otherwise report->originPrincipals may become invalid).
+ */
 static void
 PopulateReportBlame(JSContext *cx, JSErrorReport *report)
 {
@@ -756,7 +758,8 @@ PopulateReportBlame(JSContext *cx, JSErrorReport *report)
     for (FrameRegsIter iter(cx); !iter.done(); ++iter) {
         if (iter.fp()->isScriptFrame()) {
             report->filename = iter.fp()->script()->filename;
-            report->lineno = js_FramePCToLineNumber(cx, iter.fp(), iter.pc());
+            report->lineno = js_PCToLineNumber(cx, iter.fp()->script(), iter.pc());
+            report->originPrincipals = iter.fp()->script()->originPrincipals;
             break;
         }
     }
@@ -1474,7 +1477,6 @@ JSContext::~JSContext()
 #endif
 
     /* Free the stuff hanging off of cx. */
-    VOUCH_DOES_NOT_REQUIRE_STACK();
     if (parseMapPool_)
         Foreground::delete_<ParseMapPool>(parseMapPool_);
 

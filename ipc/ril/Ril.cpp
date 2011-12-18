@@ -65,6 +65,8 @@
 #define LOG(args...)  printf(args);
 #endif
 
+#define RIL_SOCKET_NAME "/dev/socket/rilproxy"
+
 using namespace base;
 using namespace std;
 
@@ -118,7 +120,7 @@ class RilReconnectTask : public Task {
 };
 
 void RilReconnectTask::Run() {
-    if(sClient->OpenSocket()) {
+    if (sClient->OpenSocket()) {
         return;
     }
     sClient->mIOLoop->PostDelayedTask(FROM_HERE, new RilReconnectTask(), 1000);
@@ -158,10 +160,10 @@ RilClient::OpenSocket()
     size_t namelen;
     int err;
     memset(&addr, 0, sizeof(addr));
-    strcpy(addr.sun_path, "/dev/socket/rilb2g");
+    strcpy(addr.sun_path, RIL_SOCKET_NAME);
     addr.sun_family = AF_LOCAL;
     mSocket.mFd = socket(AF_LOCAL, SOCK_STREAM, 0);
-    alen = strlen("/dev/socket/rilb2g") + offsetof(struct sockaddr_un, sun_path) + 1;
+    alen = strlen(RIL_SOCKET_NAME) + offsetof(struct sockaddr_un, sun_path) + 1;
 #else
     struct hostent *hp;
     struct sockaddr_in addr;
@@ -234,8 +236,8 @@ RilClient::OnFileCanReadWithoutBlocking(int fd)
             int ret = read(fd, mIncoming->mData, 1024);
             if (ret <= 0) {
                 LOG("Cannot read from network, error %d\n", ret);
-                //At this point, assume that we can't actually access
-                //the socket anymore, and start a reconnect loop.
+                // At this point, assume that we can't actually access
+                // the socket anymore, and start a reconnect loop.
                 mIncoming.forget();
                 mReadWatcher.StopWatchingFileDescriptor();
                 mWriteWatcher.StopWatchingFileDescriptor();

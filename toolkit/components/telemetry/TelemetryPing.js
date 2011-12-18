@@ -18,6 +18,7 @@
  *
  * Contributor(s):
  *   Taras Glek <tglek@mozilla.com>
+ *   Vladan Djeric <vdjeric@mozilla.com>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -57,7 +58,7 @@ const MEM_HISTOGRAMS = {
   "js-compartments-system": "MEMORY_JS_COMPARTMENTS_SYSTEM",
   "js-compartments-user": "MEMORY_JS_COMPARTMENTS_USER",
   "resident": "MEMORY_RESIDENT",
-  "storage-sqlite": "MEMORY_STORAGE_SQLITE",
+  "explicit/storage/sqlite": "MEMORY_STORAGE_SQLITE",
   "explicit/images/content/used/uncompressed":
     "MEMORY_IMAGES_CONTENT_USED_UNCOMPRESSED",
   "heap-allocated": "MEMORY_HEAP_ALLOCATED",
@@ -323,7 +324,8 @@ TelemetryPing.prototype = {
       ver: PAYLOAD_VERSION,
       info: this.getMetadata(reason),
       simpleMeasurements: getSimpleMeasurements(),
-      histograms: this.getHistograms()
+      histograms: this.getHistograms(),
+      slowSQL: Telemetry.slowSQL
     };
 
     let isTestPing = (reason == "test-ping");
