@@ -73,9 +73,9 @@ const CALLINDEX_TEMPORARY_DIALING = -1;
 
 /**
  * Define an event listener slot on an object, e.g.
- * 
+ *
  *   obj.onerror = function () {...}
- * 
+ *
  * will register the function as an event handler for the "error" event
  * if the "error" slot was defined on 'obj' or its prototype.
  */
@@ -275,7 +275,7 @@ Telephony.prototype = {
     event.call = call; //XXX this is probably not going to work
     //event.isTrusted = true;
     target = target || call;
-    target.dispatchEvent(event);    
+    target.dispatchEvent(event);
   },
 
   _processCallState: function _processCallState(state) {
@@ -355,6 +355,14 @@ Telephony.prototype = {
     this.callsByIndex[callIndex] = call;
     this.liveCalls.push(call);
     return call;
+  },
+
+  startTone: function startTone(dtmfChar) {
+    this.telephone.startTone(dtmfChar);
+  },
+
+  stopTone: function stopTone() {
+    this.telephone.stopTone();
   },
 
   get muted() {
