@@ -1565,8 +1565,7 @@ let Phone = {
 if (!this.debug) {
   // Debugging stub that goes nowhere.
   this.debug = function debug(message) {
-    postMessage({type: "dump", msg: "RIL Worker: " + message + "\n"});
-    //dump("RIL Worker: " + message + "\n");
+    dump("RIL Worker: " + message + "\n");
   };
 }
 
