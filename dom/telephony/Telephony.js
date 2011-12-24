@@ -232,7 +232,6 @@ Telephony.prototype = {
     this.window = window;
     this.telephone = Cc["@mozilla.org/telephony/radio-interface;1"]
                        .createInstance(Ci.nsITelephone);
-    this.pdp = this.telephone.QueryInterface(Ci.nsIPDP);
     this.telephoneCallback = new TelephoneCallback(this);
     //TODO switch to method suggested by bz in bug 707507
     window.addEventListener("unload", function onunload(event) {
@@ -389,8 +388,8 @@ Telephony.prototype = {
   /**
    * Setup a data call.
    *
-   * @param cdma
-   *        Integer to indicate if use CDMA radio technology.
+   * @param radioTech
+   *        Integer to indicate radio technology.
    * @param apn
    *        String containing the name of APN to connect to.
    * @param user
@@ -402,8 +401,9 @@ Telephony.prototype = {
    * @param pdptype
    *        String containing PDP type to request. ("IP", "IPV6", ...)
    */
-  connect: function connect(cdma, apn, user, passwd, chappap, pdptype) {
-    this.pdp.connect(cdma, apn, user, passwd, chappap, pdptype);
+  setupDataCall: function(radioTech, apn, user, passwd, chappap, pdptype) {
+    this.telephone.setupDataCall(radioTech, apn, user, passwd,
+                                 chappap, pdptype);
   },
 
   /**
@@ -415,22 +415,22 @@ Telephony.prototype = {
    *        0 => no reason,
    *        1 => radio shutdown.
    */
-  decativate: function deactivate(cid, reason) {
-    this.pdp.deactivate(cid, reason);
+  deactivateDataCall: function(cid, reason) {
+    this.telephone.deactivateDataCall(cid, reason);
   },
   
   /**
    * Get a list of data calls.
    */
   getDataCallList: function getDataCallList() {
-    this.pdp.getDataCallList();
+    this.telephone.getDataCallList();
   },
   
   /**
    * Get failure casue code for the most recently failed PDP context.
    */
   getFailCauseCode: function getFailCauseCode() {
-    this.pdp.getFailCauseCode();
+    this.telephone.getFailCauseCode();
   },
 
 };

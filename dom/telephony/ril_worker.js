@@ -618,9 +618,9 @@ let RIL = {
     Buf.writeString(address);
     Buf.writeUint32(clirMode || 0);
     Buf.writeUint32(uusInfo || 0);
-	// TODO Why do we need this extra 0? It was put it in to make this
-	// match the format of the binary message.
-	Buf.writeUint32(0);
+        // TODO Why do we need this extra 0? It was put it in to make this
+        // match the format of the binary message.
+        Buf.writeUint32(0);
     Buf.sendParcel();
   },
 
@@ -709,24 +709,27 @@ let RIL = {
   /**
    * Setup a data call.
    *
-   * @param cdma
-   *        Integer to indicate if use CDMA radio technology.
+   * @param radioTech
+   *        Integer to indicate radio technology.
+   *        (DATACALL_RADIOTECHONLOGY_CDMA for CDMA,
+   *         DATACALL_RADIOTECHONLOGY_GSM for GSM)
    * @param apn
-   *        String containing the name of APN to connect to.
+   *        String containing the name of the APN to connect to.
    * @param user
-   *        String containing the username for APN.
+   *        String containing the username for the APN.
    * @param passwd
-   *        String containing the password for APN.
+   *        String containing the password for the APN.
    * @param chappap
    *        Integer containing CHAP/PAP auth type.
+   *        (One of DATACALL_AUTH_*.)
    * @param pdptype
    *        String containing PDP type to request. ("IP", "IPV6", ...)
    */
-  connect: function connect(cdma, apn, user, passwd, chappap, pdptype) {
+  setupDataCall: function(radioTech, apn, user, passwd, chappap, pdptype) {
     let token = Buf.newParcel(REQUEST_SETUP_DATA_CALL);
     Buf.writeUint32(7);
-    Buf.writeString("" + cdma);
-    Buf.writeString("0");	// profile (default)
+    Buf.writeString("" + radioTech);
+    Buf.writeString("" + DATACALL_PROFILE_DEFAULT);
     Buf.writeString(apn);
     Buf.writeString(user);
     Buf.writeString(passwd);
@@ -744,7 +747,7 @@ let RIL = {
    *        0 => no reason,
    *        1 => radio shutdown.
    */
-  decative: function deactivate(cid, reason) {
+  deactivateDataCall: function(cid, reason) {
     let token = Buf.newParcel(REQUEST_DEACTIVATE_DATA_CALL);
     Buf.writeUint32(2);
     Buf.writeString(cid);
@@ -756,16 +759,14 @@ let RIL = {
    * Get a list of data calls.
    */
   getDataCallList: function getDataCallList() {
-    let token = Buf.newParcel(REQUEST_DATA_CALL_LIST);
-    Buf.sendParcel();
+    Buf.simpleRequest(REQUEST_DATA_CALL_LIST);
   },
   
   /**
    * Get failure casue code for the most recently failed PDP context.
    */
   getFailCauseCode: function getFailCauseCode() {
-    let token = Buf.newParcel(REQUEST_LAST_CALL_FAIL_CAUSE);
-    Buf.sendParcel();
+    Buf.simpleRequest(REQUEST_LAST_CALL_FAIL_CAUSE);
   },
 
   /**
@@ -927,12 +928,7 @@ RIL[REQUEST_SEND_SMS] = function REQUEST_SEND_SMS() {
 };
 RIL[REQUEST_SEND_SMS_EXPECT_MORE] = null;
 RIL[REQUEST_SETUP_DATA_CALL] = function REQUEST_SETUP_DATA_CALL() {
-  let strs = Buf.readStringList();
-  let cid = strs[0];
-  let ifname = strs[1];
-  let ipaddr = strs[2];
-  let dns = strs.length >= 4? strs[3]: "";
-  let gw = strs.length >= 5? str[4]: "";
+  let [cid, ifname, ipaddr, dns, gw] = Buf.readStringList();
   
   Phone.onSetupDataCall(cid, ifname, ipaddr, dns, gw);
 };
@@ -1383,12 +1379,12 @@ let Phone = {
   },
 
   onSetupDataCall: function onSetupDataCall(cid, ifname, ipaddr, dns, gw) {
-    this.sendDOMMessage({type: "datacall",
-			 cid: cid,
-			 ifname: ifname,
-			 ipaddr: ipaddr,
-			 dns: dns,
-			 gateway: gw});
+    this.sendDOMMessage({type: "dataCallSetup",
+                         cid: cid,
+                         ifname: ifname,
+                         ipaddr: ipaddr,
+                         dns: dns,
+                         gateway: gw});
   },
 
   /**
@@ -1508,17 +1504,18 @@ let Phone = {
   /**
    * Setup a data call (PDP).
    */
-  connect: function connect(options) {
-    if(DEBUG) debug("connect: " + JSON.stringify(options));
-    RIL.connect(options.cdma, options.apn, options.user, options.passwd,
-		options.chappap, options.reason);
+  setupDataCall: function(options) {
+    if(DEBUG) debug("setupDataCall: " + JSON.stringify(options));
+    RIL.setupDataCall(options.radioTech, options.apn,
+                      options.user, options.passwd,
+                      options.chappap, options.reason);
   },
 
   /**
    * Deactivate a data call (PDP).
    */
-  deactivate: function deactivate(options) {
-    RIL.deactivate(options.cid, options.reason);
+  deactivateDataCall: function(options) {
+    RIL.deactivateDataCall(options.cid, options.reason);
   },
 
   /**

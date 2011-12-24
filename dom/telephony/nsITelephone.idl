@@ -61,6 +61,14 @@ interface nsITelephone : nsISupports {
   void rejectCall();
   attribute bool microphoneMuted;
   attribute bool speakerEnabled;
+  
+  /* PDP APIs */
+  void setupDataCall(in long radioTech,
+                     in DOMString apn, in DOMString user, in DOMString passwd,
+                     in long chappap, in DOMString pdptype);
+  void deactivateDataCall(in DOMString cid, in DOMString reason);
+  void getDataCallList();
+  void getFailCauseCode();
 
   void registerCallback(in nsITelephoneCallback callback);
   void unregisterCallback(in nsITelephoneCallback callback);
