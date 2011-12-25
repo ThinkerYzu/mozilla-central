@@ -56,6 +56,10 @@ const DOM_CALL_READYSTATE_INCOMING       = "incoming";
 const DOM_CALL_READYSTATE_HOLDING        = "holding";
 const DOM_CALL_READYSTATE_HELD           = "held";
 
+const DATACALL_STATE_CONNECTING = "connecting";
+const DATACALL_STATE_CONNECTED = "connected";
+const DATACALL_STATE_DISCONNECTING = "disconnecting";
+const DATACALL_STATE_DISCONNECTED = "disconnected";
 
 /**
  * Fake nsIAudioManager implementation so that we can run the telephony
@@ -98,7 +102,8 @@ function nsTelephonyWorker() {
     operator:       null,
     radioState:     null,
     cardState:      null,
-    currentCalls:   {}
+    currentCalls:   {},
+    currentDataCalls:   {}
   };
 }
 nsTelephonyWorker.prototype = {
@@ -157,6 +162,11 @@ nsTelephonyWorker.prototype = {
       case "callstatechange":
         this.handleCallState(message);
         break;
+      case "datacallstatechange":
+        this.handleDataCallState(message);
+        break;
+      case "error":
+        break;
       default:
         // Got some message from the RIL worker that we don't know about.
         return;
@@ -214,6 +224,21 @@ nsTelephonyWorker.prototype = {
         this.worker.postMessage({type: "setMute", mute: true});
         gAudioManager.phoneState = Ci.nsIAudioManager.PHONE_STATE_NORMAL;
         break;
+    }
+  },
+
+  /**
+   * Handle data call state changes.
+   *
+   * It update current state, and setting DNS and default route.
+   */
+  handleDataCallState: function handleDataCallState(message) {
+    let datacalls = this.currentState.currentDataCalls;
+    
+    if(message.state == DATACALL_STATE_CONNECTED) {
+      datacalls[message.cid] = message;
+    } else {
+      delete datacalls[message.cid];
     }
   },
 

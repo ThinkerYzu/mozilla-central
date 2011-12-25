@@ -205,6 +205,9 @@ TelephoneCallback.prototype = {
     this.telephony._processCallState(event);
   },
 
+  ondatacallstatechange: function ondatacallstatechange(event) {
+  },
+
 };
 
 /**

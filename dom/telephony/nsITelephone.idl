@@ -46,6 +46,10 @@ interface nsITelephoneCallback : nsISupports {
   void onradiostatechange(in jsval event);
   void oncardstatechange(in jsval event);
   void onsignalstrengthchange(in jsval event);
+  
+  // PDP
+  void ondatacallstatechange(in jsval event);
+  void onerror(in jsval event);
 };
 
 [scriptable, uuid(f6baa721-665e-403e-8a98-acaa0d8bf267)]

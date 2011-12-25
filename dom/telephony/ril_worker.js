@@ -443,6 +443,7 @@ let Buf = {
         //TODO
         debug("Received error " + error + " for solicited parcel type " +
               request_type);
+	RIL.handleError(request_type, error);
         return;
       }
       debug("Solicited response for request type " + request_type +
@@ -781,6 +782,10 @@ let RIL = {
       debug("Handling parcel as " + method.name);
       method.call(this, length);
     }
+  },
+
+  handleError: function handleError(request_type, error) {
+    Phone.onError(request_type, error);
   }
 };
 
@@ -953,7 +958,9 @@ RIL[REQUEST_GET_IMEISV] = function REQUEST_GET_IMEISV() {
 RIL[REQUEST_ANSWER] = function REQUEST_ANSWER(length) {
   Phone.onAnswerCall();
 };
-RIL[REQUEST_DEACTIVATE_DATA_CALL] = null;
+RIL[REQUEST_DEACTIVATE_DATA_CALL] = function REQUEST_DEACTIVATE_DATA_CALL() {
+  Phone.onDeactivateDataCall();
+};
 RIL[REQUEST_QUERY_FACILITY_LOCK] = null;
 RIL[REQUEST_SET_FACILITY_LOCK] = null;
 RIL[REQUEST_CHANGE_BARRING_PASSWORD] = null;
@@ -973,7 +980,7 @@ RIL[REQUEST_DTMF_STOP] = function REQUEST_DTMF_STOP() {
 RIL[REQUEST_BASEBAND_VERSION] = function REQUEST_BASEBAND_VERSION() {
   let version = Buf.readString();
   Phone.onBasebandVersion(version);
-},
+};
 RIL[REQUEST_SEPARATE_CONNECTION] = null;
 RIL[REQUEST_SET_MUTE] = function REQUEST_SET_MUTE(length) {
   Phone.onSetMute();
@@ -981,7 +988,24 @@ RIL[REQUEST_SET_MUTE] = function REQUEST_SET_MUTE(length) {
 RIL[REQUEST_GET_MUTE] = null;
 RIL[REQUEST_QUERY_CLIP] = null;
 RIL[REQUEST_LAST_DATA_CALL_FAIL_CAUSE] = null;
-RIL[REQUEST_DATA_CALL_LIST] = null;
+RIL[REQUEST_DATA_CALL_LIST] = function REQUEST_DATA_CALL_LIST() {
+  var cid, active, type, apn, address;
+  var num, i;
+  var datacalls = [];
+  
+  num = Buf.readUint32();
+  for(i = 0; i < num; i++) {
+    datacalls.path({
+      cid: Buf.readUint32(),
+      active: Buf.readUint32(),
+      type: Buf.readString(),
+      apn: Buf.readString(),
+      address: Buf.readString()
+    });
+  }
+
+  Phone.onDataCallList(datacalls);
+};
 RIL[REQUEST_RESET_RADIO] = null;
 RIL[REQUEST_OEM_HOOK_RAW] = null;
 RIL[REQUEST_OEM_HOOK_STRINGS] = null;
@@ -1105,6 +1129,11 @@ let Phone = {
   IMSI: null,
 
   /**
+   * List of deactivating CIDs.
+   */
+  deactivateCids: [],
+
+  /**
    * List of strings identifying the network operator.
    */
   operator: null,
@@ -1128,6 +1157,12 @@ let Phone = {
    * Active calls
    */
   currentCalls: {},
+
+  onError: function onError(requestType, error) {
+    this.sendDOMMessage({type: "error",
+			 requestType: requestType,
+			 errorCode: error});
+  },
 
   /**
    * Handlers for messages from the RIL. They all begin with on* and are called
@@ -1379,12 +1414,34 @@ let Phone = {
   },
 
   onSetupDataCall: function onSetupDataCall(cid, ifname, ipaddr, dns, gw) {
-    this.sendDOMMessage({type: "dataCallSetup",
+    this.sendDOMMessage({type: "datacallstatechange",
+			 state: DATACALL_STATE_CONNECTED,
                          cid: cid,
                          ifname: ifname,
                          ipaddr: ipaddr,
                          dns: dns,
                          gateway: gw});
+  },
+
+  onDeactivateDataCall: function onDeactivateDataCall() {
+    let cid = this.deactivateCids[0];
+    
+    this.deactivateCids.splice(0, 1);
+    this.sendDOMMessage({type: "datacallstatechange",
+			 state: DATACALL_STATE_DISCONNECTED,
+			 cid: cid});
+  },
+
+  onDataCallList: function onDataCallList(datacalls) {
+    for(let datacall in datacalls) {
+      if(datcall.active == DATACALL_INACTIVE) {
+	this.deactivateCids.push(String(datacall.cid));
+	this.onDeactivateDataCall();
+      } else {
+	this.onSetupDataCall(String(datacall.cid), null,
+			     datacall.address, null, null);
+      }
+    }
   },
 
   /**
@@ -1515,6 +1572,7 @@ let Phone = {
    * Deactivate a data call (PDP).
    */
   deactivateDataCall: function(options) {
+    this.deactivateCids.push(options.cid);
     RIL.deactivateDataCall(options.cid, options.reason);
   },
 
