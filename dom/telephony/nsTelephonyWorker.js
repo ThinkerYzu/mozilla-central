@@ -261,10 +261,10 @@ nsTelephonyWorker.prototype = {
     // XXX: Some one should fix this
     this.system("/system/bin/route add default dev \"" +
                 message.ifname + "\"");
-    this.system("setprop net.dns1 $(getprop net." +
-                message.ifname + ".dns1)");
-    this.system("setprop net.dns2 $(getprop net." +
-                message.ifname + ".dns2)");
+    this.system("setprop net.dns1 \"$(getprop net." +
+                message.ifname + ".dns1)\"");
+    this.system("setprop net.dns2 \"$(getprop net." +
+                message.ifname + ".dns2)\"");
   },
 
   // nsIRadioWorker
