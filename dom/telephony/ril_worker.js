@@ -712,8 +712,8 @@ let RIL = {
    *
    * @param radioTech
    *        Integer to indicate radio technology.
-   *        (DATACALL_RADIOTECHONLOGY_CDMA for CDMA,
-   *         DATACALL_RADIOTECHONLOGY_GSM for GSM)
+   *        DATACALL_RADIOTECHONLOGY_CDMA => CDMA.
+   *        DATACALL_RADIOTECHONLOGY_GSM  => GSM.
    * @param apn
    *        String containing the name of the APN to connect to.
    * @param user
@@ -722,7 +722,10 @@ let RIL = {
    *        String containing the password for the APN.
    * @param chappap
    *        Integer containing CHAP/PAP auth type.
-   *        (One of DATACALL_AUTH_*.)
+   *        DATACALL_AUTH_NONE        => PAP and CHAP is never performed.
+   *        DATACALL_AUTH_PAP         => PAP may be performed.
+   *        DATACALL_AUTH_CHAP        => CHAP may be performed.
+   *        DATACALL_AUTH_PAP_OR_CHAP => PAP / CHAP may be performed.
    * @param pdptype
    *        String containing PDP type to request. ("IP", "IPV6", ...)
    */
@@ -745,8 +748,8 @@ let RIL = {
    * @param cid
    *        String containing CID.
    * @param reason
-   *        0 => no reason,
-   *        1 => radio shutdown.
+   *        DATACALL_DEACTIVATE_NO_REASON => no reason,
+   *        DATACALL_DEACTIVATE_RADIO_SHUTDOWN => radio shutdown.
    */
   deactivateDataCall: function(cid, reason) {
     let token = Buf.newParcel(REQUEST_DEACTIVATE_DATA_CALL);
