@@ -39,6 +39,7 @@
 const {classes: Cc, interfaces: Ci, utils: Cu, results: Cr} = Components;
 
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
+Cu.import("resource://gre/modules/ctypes.jsm");
 
 const DEBUG = true; // set to false to suppress debug messages
 
@@ -228,6 +229,12 @@ nsTelephonyWorker.prototype = {
   },
 
   /**
+   * void system(char *) declared with ctypes.
+   * We sould use other function to avoid security issue.
+   */
+  system: null,
+
+  /**
    * Handle data call state changes.
    *
    * It update current state, and setting DNS and default route.
@@ -237,9 +244,27 @@ nsTelephonyWorker.prototype = {
     
     if(message.state == DATACALL_STATE_CONNECTED) {
       datacalls[message.cid] = message;
+      this.setupEnvForDataCall(message);
     } else {
       delete datacalls[message.cid];
     }
+  },
+
+  setupEnvForDataCall: function setupEnvForDataCall(message) {
+    if(this.system == null) {
+      libc = ctypes.open("/system/lib/libc.so");
+      
+      // int system(char *)
+      this.system = libc.declare("system", ctypes.default_abi,
+                                 ctypes.int, ctypes.char.ptr);
+    }
+    // XXX: Some one should fix this
+    this.system("/system/bin/route add default dev \"" +
+                message.ifname + "\"");
+    this.system("setprop net.dns1 $(getprop net." +
+                message.ifname + ".dns1)");
+    this.system("setprop net.dns2 $(getprop net." +
+                message.ifname + ".dns2)");
   },
 
   // nsIRadioWorker
