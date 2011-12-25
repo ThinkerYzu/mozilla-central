@@ -41,6 +41,7 @@
 
 #include "hardware_legacy/uevent.h"
 #include "Hal.h"
+#include "HalImpl.h"
 #include "mozilla/dom/battery/Constants.h"
 #include "mozilla/FileUtils.h"
 #include "nsAlgorithm.h"
@@ -212,7 +213,7 @@ public:
   NS_IMETHOD Run()
   {
     hal::BatteryInformation info;
-    GetCurrentBatteryInformation(&info);
+    hal_impl::GetCurrentBatteryInformation(&info);
     hal::NotifyBatteryChange(info);
     return NS_OK;
   }
